@@ -1,0 +1,714 @@
+--518 rows
+
+Use w3_Northwind
+go
+
+
+CREATE VIEW [vwNorthwind] AS
+
+	select od.OrderDetailID AS 'Order Detail ID'
+		,od.OrderID AS 'Order ID'
+		,o.OrderDate AS 'Order Date'
+		,p.ProductName AS 'Product Name'
+		,od.ProductID AS 'Product ID'
+		,ca.CategoryID as 'Product Category ID'
+		,ca.CategoryName as 'Product Category Name'
+		,ca.Description as 'Product Description'
+		,p.Unit AS 'Product Size'
+		,od.Quantity AS 'Quantity Ordered'
+		,p.Price AS 'Product Price'
+
+		,o.CustomerID AS 'Customer ID'
+		,c.CustomerName AS 'Customer Name'
+		,c.ContactName AS 'Customer Contact'
+		,c.Address AS 'Customer Address'
+		,c.City AS 'Customer City'
+		,Right(c.PostalCode,len(c.PostalCode)-1) AS 'Customer Postal Code'
+		,c.Country AS 'Customer Country'
+
+		,o.EmployeeID AS 'Northwinds Employee ID'
+		,e.LastName as 'Northwinds Employee Last Name'
+		,e.FirstName as 'Northwinds Employee First Name'
+
+		,o.ShipperID AS 'Shipper ID'
+		,sh.ShipperName as 'Shipper Name'
+		,sh.Phone as 'Shipper Phone'
+
+		,p.SupplierID AS 'Supplier ID'
+		,su.SupplierName as 'Supplier Name '
+		,su.ContactName as 'Supplier Contact'
+		,su.Address as 'Supplier Address'
+		,su.city as 'Supplier City'
+		,su.PostalCode as 'Supplier Postal Code'
+		,su.Country as 'Supplier Country'
+		,su.Phone as 'Supplier Phone No.'
+
+
+	From OrderDetails od
+	left join Orders o on od.OrderID=o.OrderID
+	left join Products p on od.ProductID=p.ProductID
+	left join Customers c on o.CustomerID=c.CustomerID
+	left join Employees e on o.EmployeeID=e.EmployeeID
+	left join Shippers sh on o.ShipperID=sh.ShipperID
+	left join Suppliers su on p.SupplierID=su.SupplierID
+	left join Categories ca on p.CategoryID=ca.CategoryID
+
+
+
+
+
+
+
+
+/*Multi Line 
+
+Comments*/
+
+--The PRIMARY KEY constraint uniquely identifies each record in a table.
+--Primary keys must contain UNIQUE values, and cannot contain NULL values.
+--A table can have only ONE primary key; and in the table, this primary key can consist of single or multiple columns (fields).
+
+--A FOREIGN KEY is a key used to link two tables together.
+--A FOREIGN KEY is a field (or collection of fields) in one table that refers to the PRIMARY KEY in another table.
+
+--Execute this code for IntelliSense
+
+--Northwinds is a Specialty Foods Distributor
+-- https://www.geeksengine.com/article/northwind.html
+-- The Northwind database contains sales data for a fictitious company called Northwind Traders, which imports and exports specialty foods from around the world.
+
+USE [w3_Northwind]
+GO
+
+SELECT * FROM Shippers
+
+--Duplicate Table
+SELECT * INTO Shippers_test FROM Shippers
+
+SELECT * FROM Shippers_test
+
+--Drop Table
+DROP TABLE Shippers_test
+
+INSERT INTO Shippers_test (ShipperID, ShipperName)
+VALUES (4, 'Gerard')
+
+DELETE FROM Shippers_test
+WHERE ShipperName='Gerard'
+
+--CONDITION: Change Values based on multiple conditions
+UPDATE Shippers_test
+SET ShipperName='Speedy Express', Phone='(503) 555-9831'
+WHERE ShipperName='Speedy Express'
+
+--CONDITION: Select Record with the lowest price if SupplierID=3
+SELECT * FROM Products
+WHERE PRICE=
+	(
+	SELECT MIN(PRICE) AS SMALLESTPRICE FROM Products
+	WHERE SupplierID=3
+	)
+
+
+
+--CONDITION: GROUP BY / HAVING (WHERE keyword could not be used with aggregate functions)
+SELECT ORDERID, SUM(QUANTITY)
+FROM OrderDetails
+GROUP BY OrderID
+HAVING SUM(QUANTITY)>150
+ORDER BY SUM(QUANTITY) DESC
+
+--CONDITION: EXISTS (WITHOUT A JOIN) - List the suppliers with a product price less than 20
+SELECT SupplierName
+FROM Suppliers
+WHERE EXISTS (SELECT PRODUCTNAME FROM PRODUCTS WHERE PRODUCTS.SupplierID=Suppliers.SupplierID AND Price <20)
+--JOINS VS EXISTS VS IN: http://www.gregreda.com/2013/06/03/join-vs-exists-vs-in/ 
+
+--CONDITION: USE 2 TABLES (WITHOUT A JOIN)
+	--selects all the orders from the customer with CustomerID=4 (Around the Horn)
+	SELECT o.OrderID, o.OrderDate, c.CustomerName
+	FROM Customers AS c, Orders AS o
+	WHERE c.CustomerName='Around the Horn' AND c.CustomerID=o.CustomerID;
+
+	--Select ShipperID=1 (Shipper Name='Speedy Express) from Orders Table
+	SELECT o.OrderID, o.OrderDate, s.ShipperName
+	FROM Orders as o, Shippers as s
+	WHERE s.ShipperName='Speedy Express' and o.ShipperID=s.ShipperID
+
+--CONDITION: ANY / ALL (WITHOUT A JOIN)
+	--List product names if ANY records in OrderDetails have quantity=10
+	SELECT ProductName
+	from Products
+	where ProductID=ANY(Select ProductID from OrderDetails where Quantity=10)
+
+	--List product names if ALL of the records in the OrderDetails have quantity=10
+	SELECT ProductName
+	from Products
+	where ProductID<ALL(Select ProductID from OrderDetails where Quantity=10)
+
+	--Good explanation of ANY, ALL, SOME https://www.youtube.com/watch?v=-XtVZLwpwBA
+
+--Can use Where clause in conjunction with Top
+SELECT TOP 5 * FROM Categories
+WHERE CategoryID>5
+
+--Select the ORDERID that has MAX SUM OF SALES using ALIAS
+--ALIAS only exist for the duration of the query
+
+	--Returns Table of SUMS
+	SELECT ORDERID, SUM(QUANTITY) AS TOTALSALES
+	FROM OrderDetails
+	GROUP BY ORDERID
+
+	--Returns only the Highest Sum of Sales
+	SELECT MAX(Z.TOTALSALES) FROM
+		(SELECT ORDERID, SUM(QUANTITY) AS TOTALSALES
+		FROM OrderDetails
+		GROUP BY ORDERID) AS Z
+		
+	--Returns the ID and the Highest Sum of Sales
+	SELECT Z.ORDERID, Z.TOTALSALES
+		FROM (SELECT ORDERID, SUM(QUANTITY) AS TOTALSALES
+		FROM OrderDetails
+		GROUP BY ORDERID) AS Z
+		WHERE Z.TOTALSALES=
+
+			(SELECT MAX(Z.TOTALSALES) FROM
+			(SELECT ORDERID, SUM(QUANTITY) AS TOTALSALES
+			FROM OrderDetails
+			GROUP BY ORDERID) AS Z)
+
+	--Returns the ID and the Highest Sum of Sales, MY ALTERNATIVE USING 'HAVING'
+	SELECT ORDERID, SUM(QUANTITY)
+	FROM OrderDetails
+	GROUP BY OrderID
+	HAVING SUM(QUANTITY)=
+
+		(SELECT MAX(A.TOTAL) FROM
+			(SELECT ORDERID, SUM(QUANTITY) AS TOTAL
+			FROM OrderDetails
+			GROUP BY OrderID) AS A)
+
+--Name your Subqueries
+SELECT AVG(o.Total) FROM
+
+	(SELECT OrderID, SUM(Quantity) as 'Total'
+	FROM OrderDetails 
+	GROUP BY OrderID) AS o
+
+--Find products with an h in the second position
+SELECT PRODUCTNAME FROM Products
+WHERE PRODUCTNAME LIKE '_h%'
+--can also use NOT LIKE
+
+--Find products that have a,b,c, or d in the second position
+--https://www.w3schools.com/sql/sql_wildcards.asp
+SELECT ProductName FROM PRODUCTS
+WHERE ProductName LIKE '_[abcd]%'
+
+--Select All customers that are from the same countries as suppliers
+SELECT * FROM Customers
+WHERE COUNTRY IN 
+	(SELECT DISTINCT COUNTRY FROM SUPPLIERS)
+
+	
+--INNER JOIN
+SELECT o.OrderID, c.CustomerName, o.OrderDate
+FROM Orders AS o
+INNER JOIN Customers AS c ON o.CustomerID=c.CustomerID
+
+--LEFT JOIN
+SELECT od.OrderDetailID
+		,od.OrderID
+		,od.ProductID
+		,od.Quantity
+		,o.CustomerID
+		,o.OrderDate
+		,c.CustomerName
+		,p.ProductName
+FROM OrderDetails AS od
+LEFT JOIN Orders AS o ON od.OrderID=o.OrderID
+LEFT JOIN Customers AS c ON c.CustomerID=o.CustomerID
+LEFT JOIN Products AS p ON p.ProductID=od.ProductID
+
+--RIGHT JOIN keeps all records on the right table
+--This example below shows that Adam West (Right Table) did not make any orders
+--Adds rows (Orders has 196 rows, below shows 197 rows)
+--Another good example: https://www.youtube.com/watch?v=I2vuxWebeH8
+SELECT Orders.OrderID, Employees.LastName, Employees.FirstName
+FROM Orders
+RIGHT JOIN Employees ON Orders.EmployeeID = Employees.EmployeeID
+ORDER BY Employees.LastName desc;
+
+
+SELECT * FROM Customers
+SELECT * FROM Orders
+
+--FULL OUTER JOIN --
+--The FULL OUTER JOIN keyword returns all records when there is a match in left (table1) or right (table2) table records.
+SELECT * FROM CUSTOMERS 
+FULL OUTER JOIN Orders ON Customers.CustomerID=Orders.CustomerID
+
+--UNION VS UNION ALL
+--UNION only selects distinct values, UNION ALL allows duplicates
+
+--STORED PROCEDURES
+--Good video: https://www.youtube.com/watch?v=Qu3E-oncF3g (Pragim Technologies Intro to Stored Procedures)
+	CREATE PROCEDURE spSelectAllCustomers
+	AS
+	BEGIN
+	SELECT * FROM Customers
+	END
+	GO
+
+	EXEC spSelectAllCustomers
+
+	DROP PROCEDURE spSelectAllCustomers
+
+	----
+
+	CREATE PROCEDURE spSelectAllCustomers @City nvarchar(30)
+	AS
+	SELECT * FROM Customers WHERE CITY=@City
+	GO
+
+	EXEC spSelectAllCustomers @City='London'
+
+	----
+
+	CREATE PROCEDURE spSelectAllCustomers @City nvarchar(30), @PostalCode nvarchar(255)
+	AS
+	BEGIN
+	SELECT * FROM Customers WHERE City=@City AND PostalCode=@PostalCode
+	END
+	GO
+
+	EXEC spSelectAllCustomers @City='London', @PostalCode='LWA1 1DP'
+
+	---- 
+	--Can also just type this:
+	spSelectAllCustomers 'London', 'LWA1 1DP'
+
+	----
+	--Show Stored Procedure as Grid Text using 'sp_helptext'
+	sp_helptext spSelectAllCustomers
+
+	--Show other Stored Procedure information (Date Created, Parameter Name and Type)
+	sp_help spSelectAllCustomers
+
+	--Show dependencies of the stored procedure or table
+	sp_depends spSelectAllCustomer
+	sp_depends Customers
+
+	----
+	--Use ALTER to edit the procedure
+	ALTER PROCEDURE spSelectAllCustomers @City nvarchar(30), @PostalCode nvarchar(255)
+	AS
+	BEGIN
+	SELECT CustomerName, City FROM Customers WHERE City=@City AND PostalCode=@PostalCode
+	END
+	GO
+
+	spselectallcustomers 'Berlin', 'B12209'
+
+	--Output Parameters
+	-- https://www.youtube.com/watch?v=bldBshxuhMk 
+	-- use sp_depends to see what tables and procedures depend on
+
+--STORED PROCEDURES OUTPUT PARAMETERS
+-- https://www.youtube.com/watch?v=bldBshxuhMk 
+
+	--Helps to run this first (sometimes errors show up)
+	Use w3_Northwind
+	Go
+
+	Create Procedure spGetSupplierCountryCount 
+	@Country nvarchar(20),
+	@CountryCount int Output
+	as
+		Begin
+			Select @CountryCount=COUNT(Country)
+			from Suppliers
+			Where Country=@Country
+		End
+	go
+
+	DROP PROCEDURE spGetSupplierCountryCount
+
+	Declare @NumCountry int --Must give variable name
+	Execute spGetSupplierCountryCount 'France', @NumCountry Output --must type 'Output' or else nothing will be printed
+	Print @NumCountry
+
+--STORED PROCEDURES: OUTPUT PARAMETERS VS RETURN VALUES
+-- https://www.youtube.com/watch?v=st8RnNg_LLA&list=TLPQMTUwNjIwMjAepkd7HKUgZw&index=3
+--Output Parameters are preferred because they result in any data type and can have more than one value
+--Return Values can only result in Integer data type and only one value
+
+
+--STORED PROCEDURES: ADVANTAGES
+-- https://www.youtube.com/watch?v=uDcVd4vUU3s
+--1. Produces best Query execution plan (best way to get the data - especially with Indexing).  The execution plan will be reused next time.
+--2. Less Network Traffic - instead of transmitting multiple lines of code via the network, you can transmit just a few words to call
+	--the procedure through your client side application
+--3. Code reusability and easier to maintain.  Multiple applications can use 1 procedure instead of maintaining varying verions of a query
+	--There will only be 1 place to change a bug
+--4. Better Security - you can have a user access a stored procedure but not the underlying table
+--5. Helps avoid SQL Injection Attack
+
+
+--STORED PROCEDURES: Bhaskar Jogi
+-- https://www.youtube.com/watch?v=IC9v8aMuTx8&list=FLog9T8To5vuNOMNX4ye7xCQ&index=1
+-- Can place default values immediately after naming a paramenter e.g. @LoanAmount money = 100
+
+	--Sample for loop
+	declare @x int
+	set @x=1
+
+	while @x<=1000
+	begin
+		print CAST(@x as nvarchar(50)) + space(10) + 'test'
+		set @x=@x+1
+	end
+
+
+--VARIABLES
+--wiseowl: https://www.youtube.com/watch?v=NmYaOlcbfZM 
+
+	--Basic Syntax.  Declare variable explicitly.
+	DECLARE @myCountry NVARCHAR(30)
+	SET @myCountry='GERMANY'
+
+	SELECT * FROM CUSTOMERS
+	WHERE Country=@myCountry
+
+	--Assign variable value as result of select statement.  Show results in Results Grid and Message Box.
+	DECLARE @CountryCount int
+	DECLARE @CustomerCount int
+
+	SET @CustomerCount = (SELECT COUNT(DISTINCT(CUSTOMERNAME)) FROM Customers)
+	SET @CountryCount = (SELECT COUNT(DISTINCT(COUNTRY)) FROM Customers)
+
+	SELECT 'Country Count', @CountryCount
+	UNION
+	SELECT 'Customer Count', @CustomerCount
+
+	SET NOCOUNT ON
+	PRINT 'There are ' + CAST(@CountryCount AS NVARCHAR(50)) + ' Countries.'
+	PRINT 'There are ' + CAST(@CustomerCount AS NVARCHAR(50)) + ' Customers.'
+
+	--Repeat the variable value across multiple rows (must run all of the code above after '--Assign variable' comment)
+	SELECT @CustomerCount AS TEST, CUSTOMERNAME FROM Customers
+
+	--Declare multiple variables and assign value WITHIN select query
+
+	DECLARE @vCustName nvarchar (30)
+	DECLARE @vAddress nvarchar (30)
+	DECLARE @vPostalCode nvarchar (30)
+
+	SELECT TOP 1 
+		@vCustName=CUSTOMERNAME,
+		@vAddress=Customers.Address,
+		@vPostalCode=PostalCode
+
+		FROM Customers
+
+	PRINT @vCustName
+	PRINT @vAddress
+	PRINT @vPostalCode
+
+	--Convert variable to list and print list
+
+	DECLARE @CountryList nvarchar(max)
+	SET @CountryList=''
+
+	SELECT
+		@CountryList=@CountryList + Country +', '
+	FROM CUSTOMERS
+	GROUP BY Country
+
+	SELECT @CountryList
+
+	--Convert variable to list and print list WITH LINE BREAKS
+
+	DECLARE @CountryList nvarchar(max)
+	SET @CountryList=''
+
+	SELECT
+		@CountryList=@CountryList + Country + CHAR(10) + CHAR(13)
+	FROM CUSTOMERS
+	GROUP BY Country
+
+	PRINT @CountryList
+
+	--Get ORDERID of Max of Sums
+
+	DECLARE @vMaxTotal int
+	SET @vMaxTotal=
+		(
+		SELECT MAX(o.Total) FROM
+		(
+		SELECT ORDERID, SUM(QUANTITY) as TOTAL
+		FROM OrderDetails 
+		GROUP BY ORDERID
+		) AS o
+		)
+
+		SELECT ORDERID
+		FROM OrderDetails 
+		GROUP BY OrderID
+		HAVING SUM(QUANTITY)=@vMaxTotal
+
+
+--ADVANCED SQL
+-- https://www.kaggle.com/learn/advanced-sql
+
+	
+	--PARTITION BY - Repeat Aggregate Values - How to compare each record to the average, sum, min of a group (partition)
+	-- https://www.sqlshack.com/sql-partition-by-clause-overview/
+	
+		use w3_Northwind
+		go
+	
+		Select *
+		from orderdetails
+
+		select orderid,
+			ProductID,
+			ROW_NUMBER () over (partition by orderid order by quantity desc) as "Row Number",
+			quantity,
+			count(orderid) over (partition by orderid) as sizeofOrder,
+			avg(quantity) over (partition by orderid) as avgQuantity,
+			sum(quantity) over (partition by orderid) as sumQuantity,
+			min(quantity) over (partition by orderid) as minQuantity
+		from OrderDetails
+
+
+	--ANALYTIC FUNCTIONS - Cumulative Totals
+	-- https://www.kaggle.com/alexisbcook/analytic-functions
+
+	--2) Analytic navigation functions
+	--Navigation functions assign a value based on the value in a (usually) different row than the current row.
+
+	--FIRST_VALUE() (or LAST_VALUE()) - Returns the first (or last) value in the input
+	--LEAD() (and LAG()) - Returns the value on a subsequent (or preceding) row
+	-- https://www.youtube.com/watch?v=l_Zn5sdkamM
+
+
+
+
+	--3) Analytic numbering functions
+	--Numbering functions assign integer values to each row based on the ordering.
+
+	--ROW_NUMBER() - Returns the order in which rows appear in the input (starting with 1)
+	--RANK() - All rows with the same value in the ordering column receive the same rank value, where the next row receives a rank value which increments by the number of rows with the previous rank value.
+
+
+
+	--CREATE DICTIONARIES - COMPACT ALL VALUES ACROSS MULTIPLE RECORDS INTO ONE RECORD - PERTAINS TO GOOGLE BIGQUERY
+	-- https://www.kaggle.com/alexisbcook/nested-and-repeated-data
+
+--DYNAMIC SQL - USE VARIABLES INSTEP WITH QUERY
+-- https://stackoverflow.com/questions/12896147/can-i-pass-variable-to-select-statement-as-column-name-in-sql-server
+	--DECLARE @value varchar(10)  
+	--SET @value = 'intStep'  
+	--DECLARE @sqlText nvarchar(1000); 
+
+	--SET @sqlText = N'SELECT ' + @value + ' FROM dbo.tblBatchDetail'
+	--Exec (@sqlText)
+
+
+--SELECT FROM SELECT - must name nested query
+-- https://www.essentialsql.com/get-ready-to-learn-sql-server-22-using-subqueries-in-the-from-clause/
+
+	--RECORD NUMBER - PER CUSTOMER NAME
+	SELECT * FROM (
+
+	SELECT ROW_NUMBER() OVER (ORDER BY SUM([Product Price]*[Quantity Ordered]) DESC) AS 'Record Number'
+		,SUM([Product Price]*[Quantity Ordered]) AS 'Total $ Sales'
+		,[Customer Name]
+	FROM vwNorthwind
+	GROUP BY [Customer Name]
+
+	) as a
+	WHERE [Record Number]=2
+	
+	
+	
+	
+	
+	
+	
+
+
+
+
+
+SELECT * FROM vwNorthwind
+
+--RECORD NUMBER - PER CUSTOMER NAME - GET RANK, CUSTOMER NAME, AND TOTAL $ SALES BASED ON RANK DESIRED
+	SELECT * FROM (
+
+	SELECT ROW_NUMBER() OVER (ORDER BY SUM([Product Price]*[Quantity Ordered]) DESC) AS 'Record Number'
+		,SUM([Product Price]*[Quantity Ordered]) AS 'Total $ Sales'
+		,[Customer Name]
+	FROM vwNorthwind
+	GROUP BY [Customer Name]
+
+	) as a
+	WHERE [Record Number]=2
+
+--RECORD NUMBER - PER CUSTOMER NAME - PARTITIONED BY COUNTRY
+	SELECT [Customer Country]
+		,ROW_NUMBER() OVER (PARTITION BY [customer country] ORDER BY [Customer Name])
+		,[Customer Name]
+	FROM vwNorthwind
+	GROUP BY [Customer Country],[Customer Name]
+
+
+
+--PROCEDURE TO GET CUSTOMER NAME BASED ON RANK (Total $ Sales) DESIRED
+	CREATE PROCEDURE spGetCustName 
+		@custRank int
+		,@custName nvarchar(255) Output
+	AS
+	BEGIN
+		SELECT @custName=a.[Customer Name] FROM (
+
+		SELECT ROW_NUMBER() OVER (ORDER BY SUM([Product Price]*[Quantity Ordered]) DESC) AS 'Record Number'
+			,SUM([Product Price]*[Quantity Ordered]) AS 'Total $ Sales'
+			,[Customer Name]
+		FROM vwNorthwind
+		GROUP BY [Customer Name]
+
+		) AS a
+		WHERE [Record Number]=@custRank
+	END
+	GO
+
+	DECLARE @custTitle NVARCHAR(255)
+	EXEC spGetCustName 1, @custTitle OUTPUT
+	PRINT @custTitle
+
+---
+
+--PROCEDURE TO GET CUSTOMER $ SALES BASED ON RANK (Total $ Sales) DESIRED
+	CREATE PROCEDURE spGetCustSales 
+		@custRank int
+		,@custSales float Output
+	AS
+	BEGIN
+		SELECT @custSales=a.[Total $ Sales] FROM (
+
+		SELECT ROW_NUMBER() OVER (ORDER BY SUM([Product Price]*[Quantity Ordered]) DESC) AS 'Record Number'
+			,SUM([Product Price]*[Quantity Ordered]) AS 'Total $ Sales'
+			,[Customer Name]
+		FROM vwNorthwind
+		GROUP BY [Customer Name]
+
+		) AS a
+		WHERE [Record Number]=@custRank
+	END
+	GO
+
+	DECLARE @custRevenue FLOAT
+	EXEC spGetCustSales 1, @custRevenue OUTPUT
+	PRINT @custRevenue
+
+--LOOP TO PRINT REVENUE RANK, CUSTOMER NAME, AND REVENUE
+
+	DECLARE @x int
+	SET @x=1
+	DECLARE @vCustCount int
+	SET @vCustCount=(SELECT COUNT(DISTINCT([Customer Name])) FROM vwNorthwind) --Number of Distinct Customers
+
+
+	WHILE @x<=@vCustCount
+	BEGIN
+		PRINT 'Revenue Sales Rank: ' + CAST(@x AS NVARCHAR(255)) 
+
+		DECLARE @custTitle NVARCHAR(255)
+		EXEC spGetCustName @x, @custTitle OUTPUT
+		PRINT 'Customer Name: ' + @custTitle
+
+		DECLARE @custRevenue FLOAT
+		EXEC spGetCustSales @x, @custRevenue OUTPUT
+		PRINT 'Revenue: $' + CAST(@custRevenue AS NVARCHAR(255))
+		PRINT CHAR(10)
+
+		SET @x=@x+1
+	END
+	
+	
+	
+	
+	
+	
+	
+	
+	
+
+USE w3_Northwind
+GO
+
+DECLARE @vCustNeeded nvarchar(255)
+DECLARE @vColNameTotSales nvarchar(255)
+DECLARE @vColNametQtyOrd nvarchar(255)
+DECLARE @vColNameAvgPrice nvarchar(255)
+SET @vCustNeeded='Ernst Handel'
+SET @vColNameTotSales=@vCustNeeded+' Total $ Sales'
+SET @vColNametQtyOrd=@vCustNeeded+' Total Customer Quantity Ordered'
+SET @vColNameAvgPrice=@vCustNeeded+' Avg Price'
+
+--
+SELECT * FROM vwNorthwind
+WHERE [Customer Name]=@vCustNeeded
+
+--Descriptives Vertical
+SELECT @vColNameTotSales, SUM([Quantity Ordered]*[Product Price]) FROM vwNorthwind
+WHERE [Customer Name]=@vCustNeeded
+GROUP BY [Customer Name]
+UNION
+SELECT @vColNametQtyOrd, SUM([Quantity Ordered]) FROM vwNorthwind
+WHERE [Customer Name]=@vCustNeeded
+GROUP BY [Customer Name]
+UNION
+SELECT @vColNameAvgPrice, Round(Avg([Product Price]),2) FROM vwNorthwind
+WHERE [Customer Name]=@vCustNeeded
+GROUP BY [Customer Name]
+
+--Descriptives Horizontal with % of Total $ Sales and Variance from Avg Price
+SELECT [Customer Name]
+	,[Order ID]
+	,[Product Name]
+	,[Product Price]
+	,ROUND(AVG([Product Price]) over (partition by [Customer Name]),2) as 'Avg Price'
+	,ROUND([Product Price]-AVG([Product Price]) over (partition by [Customer Name]),2) as 'Variance from Avg Price'
+	,ROW_NUMBER () OVER (partition by [Customer Name] order by [Product Price]*[Quantity Ordered] desc) as '$ Sales Rank'
+	,[Product Price]*[Quantity Ordered] as '$ Sales'
+	,LAG([Product Price]*[Quantity Ordered], 1) OVER (ORDER BY [Product Price]*[Quantity Ordered]) AS '$ Sales of Next Lower Rank'
+	,FORMAT(([Product Price]*[Quantity Ordered]) / SUM([Product Price]*[Quantity Ordered]) over (partition by [Customer Name]), 'P') as '% of Total $ Sales'
+	,SUM([Product Price]*[Quantity Ordered]) over (partition by [Customer Name]) as 'Total $ Sales'
+	,[Quantity Ordered] as 'Qty Ordered'
+	,FORMAT([Quantity Ordered] / SUM([Quantity Ordered]) over (partition by [Customer Name]), 'P') as '% of Total Cust Qty Ordered'
+	,SUM([Quantity Ordered]) over (partition by [Customer Name]) as 'Total Cust Qty Ordered'
+
+FROM vwNorthwind
+WHERE [Customer Name]=@vCustNeeded
+ORDER BY '$ Sales Rank'
+
+
+--Product List
+DECLARE @vProductList nvarchar(255)
+SET @vProductList=''
+
+SELECT @vProductList=@vProductList+[Product Name]+', '
+FROM vwNorthwind
+WHERE [Customer Name]=@vCustNeeded
+
+SELECT '*Product List of Customer*: '+ @vCustNeeded +':'
+UNION
+SELECT @vProductList
+
+
+
+
